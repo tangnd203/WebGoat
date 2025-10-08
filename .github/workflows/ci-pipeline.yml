@@ -36,7 +36,7 @@ jobs:
 
       - name: Install Snyk CLI
         run: |
-          curl -sL https://raw.githubusercontent.com/snyk/snyk-install/main/install.sh | bash
+          npm install -g snyk
           snyk --version
 
       - name: Authenticate Snyk CLI
