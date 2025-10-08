@@ -1,0 +1,64 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+  actions: read
+  issues: write
+  checks: write
+  security-events: write
+
+jobs:
+  sast:
+    name: SAST Scan with Snyk Code (Java)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn -B clean install -DskipTests
+
+      - name: Install Snyk CLI
+        run: |
+          curl -sL https://raw.githubusercontent.com/snyk/snyk-install/main/install.sh | bash
+          snyk --version
+
+      - name: Authenticate Snyk CLI
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Code SAST Scan
+        run: snyk code test --severity-threshold=high --json-file-output=snyk-code-report.json || true
+
+      - name: Install snyk-to-html
+        run: npm install -g snyk-to-html
+      
+      - name: Convert Snyk JSON to HTML
+        run: snyk-to-html -i snyk-code-report.json -o snyk-code-report.html
+      
+      - name: Upload Snyk Code Report (HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-code-report-html
+          path: snyk-code-report.html
+        if: always()
+
+      - name: Upload Snyk Code Report (JSON)
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-code-report-json
+          path: snyk-code-report.json
+        if: always()
+
